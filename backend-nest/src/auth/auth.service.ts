@@ -11,11 +11,13 @@ import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import * as crypto from 'crypto';
 import { Response } from 'express';
-import { User } from '../schemas/user.schema';
-import { Session } from '../schemas/session.schema';
+import { User } from '../users/user.schema';
+import { Session } from '../sessions/session.schema';
 
 const ACCESS_TOKEN_TTL = '2m';
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000; // 14 ngày
+
+const isProd = process.env.NODE_ENV === 'production';
 
 @Injectable()
 export class AuthService {
@@ -52,11 +54,7 @@ export class AuthService {
     });
   }
 
-  async signIn(
-    username: string,
-    password: string,
-    res: Response,
-  ): Promise<void> {
+  async signIn(username: string, password: string, res: Response): Promise<void> {
     if (!username || !password) {
       throw new BadRequestException('Thiếu username hoặc password.');
     }
@@ -71,11 +69,9 @@ export class AuthService {
       throw new UnauthorizedException('username hoặc password không chính xác');
     }
 
-    const accessToken = jwt.sign(
-      { userId: user._id },
-      process.env.ACCESS_TOKEN_SECRET!,
-      { expiresIn: ACCESS_TOKEN_TTL },
-    );
+    const accessToken = jwt.sign({ userId: user._id }, process.env.ACCESS_TOKEN_SECRET!, {
+      expiresIn: ACCESS_TOKEN_TTL,
+    });
 
     const refreshToken = crypto.randomBytes(64).toString('hex');
 
@@ -87,8 +83,8 @@ export class AuthService {
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: REFRESH_TOKEN_TTL,
     });
 
@@ -98,10 +94,7 @@ export class AuthService {
     });
   }
 
-  async signOut(
-    refreshToken: string | undefined,
-    res: Response,
-  ): Promise<void> {
+  async signOut(refreshToken: string | undefined, res: Response): Promise<void> {
     if (refreshToken) {
       await this.sessionModel.deleteOne({ refreshToken });
       res.clearCookie('refreshToken');
@@ -109,10 +102,7 @@ export class AuthService {
     res.sendStatus(204);
   }
 
-  async refresh(
-    refreshToken: string | undefined,
-    res: Response,
-  ): Promise<void> {
+  async refresh(refreshToken: string | undefined, res: Response): Promise<void> {
     if (!refreshToken) {
       throw new UnauthorizedException('Token không tồn tại.');
     }
@@ -131,16 +121,14 @@ export class AuthService {
     session.expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL);
     await session.save();
 
-    const accessToken = jwt.sign(
-      { userId: session.userId },
-      process.env.ACCESS_TOKEN_SECRET!,
-      { expiresIn: ACCESS_TOKEN_TTL },
-    );
+    const accessToken = jwt.sign({ userId: session.userId }, process.env.ACCESS_TOKEN_SECRET!, {
+      expiresIn: ACCESS_TOKEN_TTL,
+    });
 
     res.cookie('refreshToken', newRefreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: REFRESH_TOKEN_TTL,
     });
 

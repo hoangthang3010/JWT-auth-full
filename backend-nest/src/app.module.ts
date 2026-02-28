@@ -7,12 +7,7 @@ import { DatabaseModule } from './database/mongoose.config';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    DatabaseModule,
-    AuthModule,
-    UsersModule,
-  ],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), DatabaseModule, AuthModule, UsersModule],
   controllers: [AppController],
   providers: [AppService],
 })

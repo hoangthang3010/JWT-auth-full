@@ -9,7 +9,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as jwt from 'jsonwebtoken';
-import { User } from '../../../schemas/user.schema';
+import { User } from '../../../users/user.schema';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
